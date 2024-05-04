@@ -1,36 +1,29 @@
-name: updatecli
-
-on:
-  workflow_dispatch:
-  pull_request:
-  push:
-    branches:
-      - master
-  schedule:
-    # * is a special character in YAML so you have to quote this string
-    # Run once a day
-    - cron: '0 0 * * *'
-
 jobs:
   updatecli:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - continue-on-error: true
+      name: Checkout
+      uses: actions/checkout@v4
+    - continue-on-error: true
+      name: Install updatecli
+      uses: updatecli/updatecli-action@v2
+    - continue-on-error: true
+      env:
+        UPDATECLI_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      name: Diff
+      run: 'updatecli diff --config updatecli/updatecli.d --values updatecli/values.yaml
 
-      - name: Install updatecli
-        uses: updatecli/updatecli-action@v2
+        '
+    - continue-on-error: true
+      env:
+        UPDATECLI_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      if: github.ref == 'refs/heads/master'
+      name: Apply
+      run: 'updatecli apply --config updatecli/updatecli.d --values updatecli/values.yaml
 
-      - name: Diff
-        continue-on-error: true
-        run: |
-          updatecli diff --config updatecli/updatecli.d --values updatecli/values.yaml
-        env:
-          UPDATECLI_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Apply
-        if: github.ref == 'refs/heads/master'
-        run: |
-          updatecli apply --config updatecli/updatecli.d --values updatecli/values.yaml
-        env:
-          UPDATECLI_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        '
+name: updatecli
+on:
+  repository_dispatch:
+    types: trigger-ga___updatecli-action.yaml
